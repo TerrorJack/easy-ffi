@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE InterruptibleFFI #-}
 {-# LANGUAGE Strict #-}
 
@@ -12,9 +11,7 @@ module Foreign.Easy
     , findSymbol
     ) where
 
-import Control.Exception.Safe
-       (Exception, MonadThrow, MonadMask, bracket)
-import Control.Monad.Base (MonadBase)
+import Control.Exception (Exception)
 import Data.Word (Word32)
 import Foreign.C.String (CString)
 import Foreign.C.Types (CInt(..), CChar, CWchar)
@@ -30,15 +27,9 @@ newtype FFIException = FFIException
 
 instance Exception FFIException
 
-loadModule
-    :: (MonadBase IO m, MonadMask m)
-    => FilePath -> m Module
-freeModule
-    :: (MonadBase IO m, MonadThrow m)
-    => Module -> m ()
-findSymbol
-    :: (MonadBase IO m, MonadMask m)
-    => Module -> String -> m (Ptr ())
+loadModule :: FilePath -> IO Module
+freeModule :: Module -> IO ()
+findSymbol :: Module -> String -> IO (Ptr ())
 #ifdef mingw32_HOST_OS
 type DWORD = Word32
 
