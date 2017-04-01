@@ -5,8 +5,11 @@
 module Foreign.Easy.LibFFI where
 
 import Foreign.C.Types (CInt(..), CUInt(..), CSize(..))
-import Foreign.Ptr (Ptr, FunPtr)
-import Foreign.Storable (Storable)
+import Foreign.ForeignPtr
+       (ForeignPtr, newForeignPtr_, withForeignPtr, mallocForeignPtrBytes,
+        mallocForeignPtrArray0)
+import Foreign.Ptr (Ptr, nullPtr, FunPtr)
+import Foreign.Storable (Storable, pokeElemOff)
 
 data Type
     = Void
@@ -37,6 +40,39 @@ foreign import ccall interruptible "ffi_type_align"
 
 foreign import ccall interruptible "ffi_type_struct_init"
                c_ffi_type_struct_init :: Ptr Type -> Ptr (Ptr Type) -> IO ()
+
+initType :: Type -> IO (ForeignPtr Type)
+initType Void = newForeignPtr_ c_ffi_type_void
+initType SInt8 = newForeignPtr_ c_ffi_type_sint8
+initType UInt8 = newForeignPtr_ c_ffi_type_uint8
+initType SInt16 = newForeignPtr_ c_ffi_type_sint16
+initType UInt16 = newForeignPtr_ c_ffi_type_uint16
+initType SInt32 = newForeignPtr_ c_ffi_type_sint32
+initType UInt32 = newForeignPtr_ c_ffi_type_uint32
+initType SInt64 = newForeignPtr_ c_ffi_type_sint64
+initType UInt64 = newForeignPtr_ c_ffi_type_uint64
+initType Float = newForeignPtr_ c_ffi_type_float
+initType Double = newForeignPtr_ c_ffi_type_double
+initType LongDouble = newForeignPtr_ c_ffi_type_longdouble
+initType Pointer = newForeignPtr_ c_ffi_type_pointer
+initType (Struct ts) = do
+    tsbuf <- mallocForeignPtrArray0 $ length ts
+    withForeignPtr tsbuf $ \tsrbuf -> do
+        w tsrbuf ts 0
+        topbuf <- mallocForeignPtrBytes $ fromIntegral c_ffi_type_size
+        withForeignPtr topbuf $ \toprbuf -> do
+            c_ffi_type_struct_init toprbuf tsrbuf
+            pure topbuf
+  where
+    w :: Ptr (Ptr Type) -> [Type] -> Int -> IO ()
+    w buf l i =
+        case l of
+            [] -> pokeElemOff buf i nullPtr
+            (t':ts') -> do
+                ft <- initType t'
+                withForeignPtr ft $ \rft -> do
+                    pokeElemOff buf i rft
+                    w buf ts' $ succ i
 
 foreign import ccall interruptible "ffi_prep_cif" c_ffi_prep_cif ::
                Ptr () -> CInt -> CUInt -> Ptr Type -> Ptr (Ptr Type) -> IO CInt
