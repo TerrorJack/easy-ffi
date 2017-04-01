@@ -2,9 +2,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE InterruptibleFFI #-}
 {-# LANGUAGE Strict #-}
-#ifdef mingw32_HOST_OS
-module Foreign.Easy.Win32 where
 
+module Foreign.Easy.Win32 where
+#ifdef mingw32_HOST_OS
 import Control.Exception (throwIO, bracket)
 import Control.Monad (unless)
 import Data.Bits ((.|.))
@@ -116,7 +116,4 @@ assertFFI p m = do
 throwFFI :: String -> IO a
 throwFFI = throwIO . FFIException
 #else
-module Foreign.Easy.Win32
-    (
-    ) where
 #endif

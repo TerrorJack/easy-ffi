@@ -1,7 +1,7 @@
 name: easy-ffi
 version: 0.0.1
 category: Development, FFI, Foreign
-synopsis: Cross-platform FFI toolkit.
+synopsis: Simple-to-use FFI toolkit.
 stability: alpha
 maintainer: Shao Cheng <astrohavoc@gmail.com>
 copyright: (c) 2017 Shao Cheng
@@ -10,6 +10,14 @@ github: TerrorJack/easy-ffi
 
 extra-libraries:
   - ffi
+
+cc-options: -std=c11
+
+include-dirs:
+  - cbits
+
+c-sources:
+  - cbits/*.c
 
 when:
   - condition: os(windows)
