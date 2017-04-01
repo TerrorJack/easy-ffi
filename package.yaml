@@ -10,7 +10,7 @@ github: TerrorJack/easy-ffi
 
 extra-libraries:
   - ffi
-  
+
 when:
   - condition: os(windows)
     extra-libraries:
@@ -24,6 +24,8 @@ ghc-options: -Wall
 
 dependencies:
   - base >= 4.9 && < 4.10
+  - safe-exceptions
+  - transformers-base
 
 library:
   source-dirs: src
