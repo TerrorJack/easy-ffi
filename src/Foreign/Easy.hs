@@ -17,7 +17,8 @@ import Control.Monad (unless)
 import Data.Bits ((.|.))
 import Data.Functor (void)
 import Data.Word (Word32)
-import Foreign.C.String (CString, withCString, peekCWString)
+import Foreign.C.String
+       (CString, withCString, withCWString, peekCWString)
 import Foreign.C.Types (CInt(..), CChar, CWchar)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
@@ -41,8 +42,6 @@ type DWORD = Word32
 
 type FARPROC = Ptr ()
 
-type HANDLE = Ptr ()
-
 type HMODULE = Ptr ()
 
 type LPCSTR = Ptr CChar
@@ -62,8 +61,8 @@ foreign import capi
                "windows.h value FORMAT_MESSAGE_ALLOCATE_BUFFER"
                c_FORMAT_MESSAGE_ALLOCATE_BUFFER :: DWORD
 
-foreign import ccall interruptible "LoadLibraryExW"
-               c_LoadLibraryExW :: LPCWSTR -> HANDLE -> DWORD -> IO HMODULE
+foreign import ccall interruptible "LoadLibraryW" c_LoadLibraryW ::
+               LPCWSTR -> IO HMODULE
 
 foreign import ccall interruptible "GetProcAddress"
                c_GetProcAddress :: HMODULE -> LPCSTR -> IO FARPROC
@@ -83,7 +82,8 @@ foreign import ccall interruptible "FormatMessageW"
 foreign import ccall interruptible "LocalFree" c_LocalFree ::
                Ptr a -> IO (Ptr a)
 
-loadModule = undefined
+loadModule p =
+    fmap Module $ cannotbe nullPtr $ withCWString p $ \buf -> c_LoadLibraryW buf
 
 freeModule m = void $ cannotbe False $ c_FreeLibrary $ getModule m
 
