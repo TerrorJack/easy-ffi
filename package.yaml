@@ -27,3 +27,5 @@ dependencies:
 
 library:
   source-dirs: src
+  exposed-modules:
+    - Foreign.Easy
