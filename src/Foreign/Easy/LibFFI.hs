@@ -1,9 +1,12 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE InterruptibleFFI #-}
+{-# LANGUAGE Strict #-}
 
 module Foreign.Easy.LibFFI where
 
-import Foreign.C.Types (CSize(..))
-import Foreign.Ptr (Ptr)
+import Foreign.C.Types (CInt(..), CUInt(..), CSize(..))
+import Foreign.Ptr (Ptr, FunPtr)
+import Foreign.Storable (Storable)
 
 data Type
     = Void
@@ -21,6 +24,11 @@ data Type
     | Pointer
     | Struct [Type]
 
+data Value = forall t. Storable t =>
+                       Value
+    { getValue :: t
+    }
+
 foreign import ccall interruptible "ffi_type_size" c_ffi_type_size
                :: CSize
 
@@ -29,6 +37,17 @@ foreign import ccall interruptible "ffi_type_align"
 
 foreign import ccall interruptible "ffi_type_struct_init"
                c_ffi_type_struct_init :: Ptr Type -> Ptr (Ptr Type) -> IO ()
+
+foreign import ccall interruptible "ffi_prep_cif" c_ffi_prep_cif ::
+               Ptr () -> CInt -> CUInt -> Ptr Type -> Ptr (Ptr Type) -> IO CInt
+
+foreign import ccall interruptible "ffi_prep_cif_var"
+               c_ffi_prep_cif_var ::
+               Ptr () ->
+                 CInt -> CUInt -> CUInt -> Ptr Type -> Ptr (Ptr Type) -> IO CInt
+
+foreign import ccall interruptible "ffi_call" c_ffi_call ::
+               Ptr () -> FunPtr (IO ()) -> Ptr () -> Ptr (Ptr ()) -> IO ()
 
 foreign import ccall interruptible "& ffi_type_void"
                c_ffi_type_void :: Ptr Type
