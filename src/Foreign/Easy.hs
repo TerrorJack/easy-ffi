@@ -18,7 +18,7 @@ import Data.Bits ((.|.))
 import Data.Functor (void)
 import Data.Word (Word32)
 import Foreign.C.String
-       (CString, withCString, withCWString, peekCWString)
+       (CString, withCString, withCWString, peekCString, peekCWString)
 import Foreign.C.Types (CInt(..), CChar, CWchar)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr, nullPtr)
@@ -37,6 +37,8 @@ instance Exception FFIException
 loadModule :: FilePath -> IO Module
 freeModule :: Module -> IO ()
 findSymbol :: Module -> String -> IO (Ptr ())
+throwFFI :: String -> IO a
+throwFFI = throwIO . FFIException
 #ifdef mingw32_HOST_OS
 type DWORD = Word32
 
@@ -83,21 +85,21 @@ foreign import ccall interruptible "LocalFree" c_LocalFree ::
                Ptr a -> IO (Ptr a)
 
 loadModule p =
-    fmap Module $ cannotbe nullPtr $ withCWString p $ \buf -> c_LoadLibraryW buf
+    fmap Module $
+    assertFFI (/= nullPtr) $ withCWString p $ \buf -> c_LoadLibraryW buf
 
-freeModule m = void $ cannotbe False $ c_FreeLibrary $ getModule m
+freeModule m = void $ assertFFI (== True) $ c_FreeLibrary $ getModule m
 
 findSymbol m s =
-    cannotbe nullPtr $
+    assertFFI (/= nullPtr) $
     withCString s $ \buf -> c_GetProcAddress (getModule m) buf
 
-cannotbe
-    :: Eq a
-    => a -> IO a -> IO a
-cannotbe v m = do
+assertFFI :: (a -> Bool) -> IO a -> IO a
+assertFFI p m = do
     r <- m
-    if r == v
-        then do
+    if p r
+        then pure r
+        else do
             err <- c_GetLastError
             alloca $ \ps -> do
                 r' <-
@@ -113,8 +115,7 @@ cannotbe v m = do
                 if r' == 0
                     then do
                         err' <- c_GetLastError
-                        throwIO $
-                            FFIException $
+                        throwFFI $
                             "Call to FormatMessageW failed with " ++
                             show err' ++ ", last call failed with " ++ show err
                     else bracket
@@ -123,18 +124,20 @@ cannotbe v m = do
                                   msgbuf' <- c_LocalFree msgbuf
                                   unless (msgbuf' == nullPtr) $ do
                                       err' <- c_GetLastError
-                                      throwIO $
-                                          FFIException $
+                                      throwFFI $
                                           "Call to LocalFree failed with " ++
                                           show err')
                              (\msgbuf -> do
                                   msg <- peekCWString msgbuf
-                                  throwIO $
-                                      FFIException $
+                                  throwFFI $
                                       "Last error code: " ++
                                       show err ++ ", error message: " ++ msg)
-        else pure r
 #else
+foreign import capi "dlfcn.h value RTLD_NOW" c_RTLD_NOW :: CInt
+
+foreign import capi "dlfcn.h value RTLD_GLOBAL" c_RTLD_GLOBAL ::
+               CInt
+
 foreign import ccall interruptible "dlopen" c_dlopen ::
                CString -> CInt -> IO (Ptr ())
 
@@ -147,12 +150,23 @@ foreign import ccall interruptible "dlclose" c_dlclose ::
 foreign import ccall interruptible "dlerror" c_dlerror ::
                IO CString
 
-foreign import ccall interruptible "strerror" c_strerror ::
-               CInt -> IO CString
+loadModule p =
+    fmap Module $
+    assertFFI (/= nullPtr) $
+    withCString p $ \buf -> c_dlopen buf $ c_RTLD_NOW .|. c_RTLD_GLOBAL
 
-loadModule = undefined
+freeModule m = void $ assertFFI (== 0) $ c_dlclose (getModule m)
 
-freeModule = undefined
+findSymbol m s =
+    assertFFI (/= nullPtr) $ withCString s $ \buf -> c_dlsym (getModule m) buf
 
-findSymbol = undefined
+assertFFI :: (a -> Bool) -> IO a -> IO a
+assertFFI p m = do
+    r <- m
+    if p r
+        then pure r
+        else do
+            buf <- c_dlerror
+            msg <- peekCString buf
+            throwFFI $ "Last error message: " ++ msg
 #endif
