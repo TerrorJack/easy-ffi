@@ -1,6 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE InterruptibleFFI #-}
-{-# LANGUAGE Strict #-}
 
 module Foreign.Easy.LibFFI where
 

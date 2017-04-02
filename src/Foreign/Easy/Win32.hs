@@ -1,7 +1,6 @@
 {-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE InterruptibleFFI #-}
-{-# LANGUAGE Strict #-}
 
 module Foreign.Easy.Win32 where
 #ifdef mingw32_HOST_OS

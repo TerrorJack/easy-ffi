@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-dodgy-exports -Wno-unused-imports #-}
-
 module Foreign.Easy
     ( Module(..)
     , FFIException(..)
